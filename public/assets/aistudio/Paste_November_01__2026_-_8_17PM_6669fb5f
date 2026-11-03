@@ -1,0 +1,1234 @@
+# MASTER BUILD PROMPT — VIRTUAL-Q 2.0
+## Complete Production-Ready Website with Supabase Backend and Vercel Deployment
+
+You are acting as a senior full-stack engineer, UI/UX designer, database architect, security engineer and software tester.
+
+Your task is to design, develop and deliver a complete, functional, production-oriented web application called **Virtual-Q**.
+
+This is not a frontend prototype, static website or design-only project.
+
+Build the complete application with a working Supabase backend, database, authentication, real-time queue management, business management and customer functionality.
+
+The final deliverable must be a complete downloadable source-code project that I can run locally and deploy to Vercel.
+
+Do not stop after creating the visual design or a working preview.
+
+---
+
+# 1. PROJECT OVERVIEW
+
+Product name: Virtual-Q
+
+Tagline: Skip the wait. Live more.
+
+Product category: Smart Digital Queue Management System.
+
+Core objective:
+
+Virtual-Q helps customers join physical business queues remotely, receive digital tokens, monitor their queue positions and arrive when their turns approach.
+
+It helps businesses manage customers, service counters, waiting lists, orders and business operations through one dashboard.
+
+Target businesses:
+
+- Restaurants and cafes
+- Hospitals and clinics
+- Salons and barbershops
+- Banks and service centers
+- Automobile service centers
+- Other local businesses
+
+Important positioning:
+
+Virtual-Q is primarily a queue management platform, not a food delivery application.
+
+Its primary value is reducing physical waiting time and improving business queue management.
+
+# 2. MANDATORY DESIGN REFERENCES
+
+I am attaching multiple screenshots generated specifically for Virtual-Q.
+
+These screenshots are the primary visual design references.
+
+Study every attached screenshot before implementing the frontend.
+
+IMPORTANT:
+
+- Follow the references closely.
+- Preserve their visual identity.
+- Do not invent an unrelated design.
+- Do not turn the application into a generic SaaS template.
+- Do not introduce unnecessary sections.
+- Maintain the same design language across every page.
+
+## Reference 1: Main Homepage
+
+Follow the attached Virtual-Q homepage screenshot.
+
+Required elements:
+
+- Virtual-Q logo and brand name.
+- Discover navigation.
+- How It Works navigation.
+- For Businesses navigation.
+- My Queue button.
+- Business Owner button.
+- Minimal hero heading: "Skip the wait."
+- Supporting heading: "Join the queue before you arrive."
+- Short supporting description.
+- Explore Businesses button.
+- How It Works button.
+- Realistic queue preview/mobile ticket illustration.
+- Small feature strip.
+
+Keep the layout spacious and minimal.
+
+## Reference 2: Customer Discovery Page
+
+Follow the attached business discovery screenshot.
+
+Required elements:
+
+- Customer navigation.
+- Discover Businesses heading.
+- Search businesses/services input.
+- Category filters.
+- Business cards.
+- Business images.
+- Business name and category.
+- Business location.
+- Open/closed status.
+- Estimated waiting time.
+- People waiting.
+- Business details action.
+
+Categories:
+
+- All
+- Restaurants
+- Cafes
+- Salons
+- Clinics
+- Services
+- Other
+
+Use actual Supabase business data.
+
+Never hardcode sample businesses.
+
+## Reference 3: Business Details and Menu Page
+
+Follow the attached business details screenshot.
+
+Required elements:
+
+- Business banner.
+- Business logo or thumbnail.
+- Business name.
+- Category.
+- Location.
+- Rating if actual rating data exists.
+- Open/closed status.
+- Menu search.
+- Menu item cards.
+- Product images.
+- Product name.
+- Description.
+- Price in INR.
+- Add to cart button.
+- Shopping cart panel.
+- Quantity controls.
+- Subtotal.
+- Order summary.
+
+Do not introduce fake menu items or prices.
+
+The cart must work properly.
+
+## Reference 4: Business Registration Page
+
+Follow the attached business registration screenshot.
+
+Required elements:
+
+- Virtual-Q navbar.
+- Back navigation.
+- Business registration heading.
+- Minimal benefits section.
+- Business owner name.
+- Business email.
+- Phone number.
+- Password.
+- Confirm password.
+- Business category.
+- Business location.
+- Create Business Account.
+- Existing account sign-in link.
+
+Preserve actual Supabase authentication.
+
+Do not expose passwords or store them manually.
+
+## Reference 5: Business Owner Dashboard
+
+Follow the attached dashboard screenshot.
+
+Required elements:
+
+Sidebar:
+
+- Dashboard
+- Queue
+- Orders
+- Menu
+- Profile
+- Settings
+
+Dashboard:
+
+- Business owner greeting.
+- Current queue.
+- Now serving.
+- Estimated wait.
+- Today's orders.
+- Queue overview table.
+- Recent orders.
+
+Use actual database values.
+
+All statistics must be calculated from real data.
+
+## GLOBAL DESIGN SYSTEM
+
+Use the following visual design consistently.
+
+Background: #FAF8F5 or similar warm ivory.
+
+Primary text: #171412.
+
+Secondary text: muted warm grey.
+
+Primary accent: coffee brown.
+
+Secondary accent: subtle gold.
+
+Success: restrained green.
+
+Typography:
+
+- Inter, Geist or Manrope for application interfaces.
+- Elegant serif typography may be used for the Virtual-Q brand.
+
+Design principles:
+
+- Premium.
+- Minimal.
+- Professional.
+- Elegant.
+- Clean.
+- Trustworthy.
+- Consistent spacing.
+- Clear information hierarchy.
+
+UI requirements:
+
+- Rounded cards.
+- Thin subtle borders.
+- Soft shadows.
+- Clean buttons.
+- Minimal icons.
+- Consistent form controls.
+- Subtle hover effects.
+- Small elegant animations.
+
+STRICTLY AVOID:
+
+- Huge unnecessary headings.
+- Long paragraphs.
+- Excessive decorative text.
+- Unnecessary navigation links.
+- Duplicate buttons.
+- Random statistics.
+- Fake business information.
+- Excessive gradients.
+- Neon colours.
+- Excessive glassmorphism.
+- Overloaded dashboards.
+- Unnecessary animations.
+- Decorative UI that does not serve a purpose.
+
+Every visible UI element must have a purpose.
+
+# 3. TECHNOLOGY STACK
+
+Use this technology stack:
+
+Frontend:
+- React.
+- TypeScript.
+- Vite.
+- Tailwind CSS.
+- Lucide React icons.
+- Reusable React components.
+
+Backend:
+- Supabase.
+
+Database:
+- Supabase PostgreSQL.
+
+Authentication:
+- Supabase Auth.
+
+Real-time:
+- Supabase Realtime.
+
+Storage:
+- Supabase Storage.
+
+Server-side operations:
+- Supabase Edge Functions and secure PostgreSQL RPC functions where appropriate.
+
+Deployment:
+- Vercel.
+
+Version control:
+- GitHub-compatible project structure.
+
+Do not use Firebase.
+
+Do not use a separate paid backend.
+
+Do not use mock API responses as a substitute for actual backend functionality.
+
+Use current stable and mutually compatible package versions.
+
+# 4. USER ROLES AND AUTHENTICATION
+
+There are two main user types.
+
+## A. Customers
+
+Customers must be able to use Virtual-Q without filling out a registration form or entering a password.
+
+Implement Supabase anonymous authentication in the background.
+
+Requirements:
+
+- Automatically create an anonymous customer session when needed.
+- No customer registration screen.
+- No customer login screen.
+- Customers can discover businesses.
+- Customers can join queues.
+- Customers can track their active queue.
+- Customers can view queue history associated with their anonymous session.
+- Customers can place orders if the business supports ordering.
+
+Preserve customer session continuity using the supported Supabase session mechanism.
+
+Do not expose internal session credentials.
+
+Do not allow customers to access other customers' private queue or order records.
+
+Provide a clear explanation if a customer clears browser data or loses their anonymous session: their previous guest queue history may no longer be accessible.
+
+## B. Business Owners
+
+Business owners must register and sign in.
+
+Implement:
+
+- Email and password registration.
+- Email and password login.
+- Logout.
+- Password reset.
+- Authenticated sessions.
+- Protected dashboard routes.
+- Business ownership verification.
+
+Each business owner must only access businesses they own or are explicitly authorized to manage.
+
+A user must not be able to change their role by editing frontend state.
+
+Enforce all role permissions through the database and server-side authorization.
+
+# 5. CUSTOMER FEATURES
+
+Implement all of the following.
+
+## 5.1 Business Discovery
+
+- Display registered businesses.
+- Search by business name.
+- Filter by category.
+- Filter by location where available.
+- Show open/closed status.
+- Show waiting customer count.
+- Show estimated wait.
+- Open business details.
+
+Use actual database records.
+
+## 5.2 Remote Queue Joining
+
+Customers can:
+
+1. Open a business.
+2. Select the available service or queue.
+3. View queue availability.
+4. Join the queue.
+5. Receive a unique digital token.
+6. View queue position.
+7. Track progress.
+
+Generate queue numbers safely using database-side transactions or an equivalent atomic mechanism.
+
+Never generate tokens only in the browser.
+
+Prevent duplicate active queue entries for the same customer and queue unless business rules explicitly allow them.
+
+## 5.3 Live Queue Tracking
+
+Display:
+
+- Token number.
+- Current position.
+- People ahead.
+- Currently serving token.
+- Estimated waiting time.
+- Queue status.
+- Business information.
+
+Statuses:
+
+- Waiting.
+- Called.
+- Serving.
+- Completed.
+- Cancelled.
+- Missed.
+
+Use Supabase Realtime for relevant updates.
+
+Ensure that users can only subscribe to records they are authorized to view.
+
+## 5.4 Smart Wait-Time Prediction
+
+Implement a reliable calculation system.
+
+Initial calculation:
+
+Estimated waiting time = number of people ahead × average service duration.
+
+Improve it using historical completed service durations.
+
+Requirements:
+
+- Calculate average service time.
+- Maintain relevant historical records.
+- Update estimates when the queue changes.
+- Display an estimated range when appropriate.
+- Display a sensible fallback when historical data is insufficient.
+- Never claim predictions are guaranteed.
+
+The application must remain useful without AI API keys.
+
+## 5.5 Smart Arrival Assistant
+
+Use queue position, estimated waiting time and optional customer-provided travel duration.
+
+Calculate:
+
+Recommended departure time = estimated time until service minus travel duration minus a small configurable buffer.
+
+Display:
+
+- Estimated time remaining.
+- Travel duration.
+- Recommended departure time.
+- Approaching-turn status.
+
+Do not require a paid maps API.
+
+Allow the customer to manually enter travel time.
+
+Do not invent GPS or navigation functionality.
+
+## 5.6 Queue History
+
+Display:
+
+- Previous businesses.
+- Token numbers.
+- Date and time.
+- Queue status.
+- Service information.
+- Related order if available.
+
+Use actual customer-session records.
+
+## 5.7 Order Management
+
+Support:
+
+- Menu browsing.
+- Add to cart.
+- Remove from cart.
+- Increase quantity.
+- Decrease quantity.
+- Calculate subtotal.
+- Place order.
+- View order status.
+- Order history.
+
+No online payment gateway initially.
+
+Payment mode:
+
+Pay at the business.
+
+Do not integrate Razorpay or Stripe.
+
+Never mark an order as paid unless payment has actually been confirmed.
+
+# 6. BUSINESS OWNER FEATURES
+
+## 6.1 Business Registration
+
+Allow owners to register a business.
+
+Required fields:
+
+- Owner name.
+- Email.
+- Phone.
+- Password.
+- Business name.
+- Business category.
+- Business location.
+
+After successful registration, create the corresponding business-owner profile securely.
+
+Avoid creating duplicate business records during retries.
+
+## 6.2 Business Dashboard
+
+Display:
+
+- Current queue count.
+- Currently serving token.
+- Estimated waiting time.
+- Today's orders.
+- Customers served today.
+- Average service time.
+
+Use real calculations.
+
+Display useful empty states when there is no data.
+
+## 6.3 Queue Management
+
+Business owners can:
+
+- View waiting customers.
+- Call the next customer.
+- Mark a customer as serving.
+- Mark service as completed.
+- Skip or mark a customer as missed.
+- Cancel a queue entry where authorized.
+- View customer token numbers.
+- View people ahead.
+- View estimated waiting time.
+
+The queue must remain consistent across multiple devices.
+
+Use secure database operations.
+
+## 6.4 Automatic Token Calling
+
+When a business owner marks the current service as completed:
+
+- Complete the active service.
+- Advance to the next eligible customer.
+- Update the current serving token.
+- Update queue positions.
+- Recalculate estimated waiting time.
+- Publish relevant real-time updates.
+
+Do not automatically mark customers completed without owner confirmation.
+
+Prevent race conditions when two staff members operate the same queue.
+
+## 6.5 Multiple Counter Management
+
+Support multiple counters or service stations.
+
+Business owners can:
+
+- Create counters.
+- Name counters.
+- Activate/deactivate counters.
+- Assign services to counters.
+- View counter status.
+- Assign the next customer.
+- Monitor counter-specific queues.
+
+Queue tokens and serving order must be handled correctly across counters.
+
+Do not accidentally serve one customer from two counters.
+
+## 6.6 Business Analytics
+
+Display:
+
+- Total customers today.
+- Total customers this week.
+- Average waiting time.
+- Average service duration.
+- Peak business hours.
+- Completed queues.
+- Missed customers.
+- Cancelled queues.
+- Today's orders.
+
+Use actual database records.
+
+Use clear charts only when they add meaningful information.
+
+Provide appropriate empty states.
+
+## 6.7 QR Code Generator
+
+Every business must have a unique QR code.
+
+The QR code must direct customers to the correct business page.
+
+Allow owners to:
+
+- View QR code.
+- Download PNG.
+- Print QR code.
+- Copy business link.
+
+The QR code must point to the deployed application domain.
+
+Do not use temporary AI Studio preview URLs.
+
+## 6.8 Custom Queue Settings
+
+Allow business owners to configure:
+
+- Queue availability.
+- Queue capacity.
+- Average service duration.
+- Grace period for missed turns.
+- Available counters.
+- Service categories.
+- Opening hours.
+- Closing hours.
+
+Validate settings on the backend.
+
+# 7. ADVANCED INTELLIGENCE FEATURES
+
+Implement these selected enhancements.
+
+## 7.1 AI-Assisted Queue Prediction
+
+Use actual historical queue information.
+
+Prediction inputs:
+
+- Historical service durations.
+- Current queue length.
+- Time of day.
+- Day of week.
+- Counter availability.
+- Recent service performance.
+
+Start with a reliable statistical prediction algorithm.
+
+If an AI model or external API is unavailable, use the statistical calculation.
+
+Never show fake AI-generated numbers.
+
+## 7.2 Queue Congestion Alerts
+
+Alert business owners when:
+
+- Queue length exceeds the configured limit.
+- Waiting time becomes unusually high.
+- Queue growth exceeds normal levels.
+
+Provide actionable suggestions.
+
+Example:
+
+"Your waiting queue is unusually long. Consider activating another counter."
+
+Do not generate excessive notifications.
+
+Allow owners to configure alert thresholds.
+
+# 8. DATABASE ARCHITECTURE
+
+Create a complete Supabase PostgreSQL schema.
+
+Use normalized tables and proper relationships.
+
+Suggested tables:
+
+1. profiles
+2. businesses
+3. business_members
+4. business_categories
+5. business_services
+6. menu_items
+7. counters
+8. queue_entries
+9. queue_sequences
+10. service_history
+11. orders
+12. order_items
+13. business_hours
+14. queue_settings
+15. notifications
+16. business_analytics_daily
+
+You may adjust the schema if a better normalized design is necessary.
+
+Requirements:
+
+- UUID primary keys.
+- Foreign keys.
+- Appropriate unique constraints.
+- Indexes for frequently queried columns.
+- Created and updated timestamps.
+- Appropriate status constraints.
+- Transaction-safe operations.
+- Data integrity constraints.
+
+Do not store sensitive credentials in ordinary application tables.
+
+Create migrations under:
+
+supabase/migrations/
+
+Include a complete SQL setup that can be applied to a fresh Supabase project.
+
+# 9. ROW LEVEL SECURITY
+
+RLS is mandatory.
+
+Enable RLS on every table containing private or business-specific data.
+
+Policies must ensure:
+
+CUSTOMERS:
+- Can read public business information.
+- Can access only their own anonymous-session queue records.
+- Can access only their own order records.
+- Cannot access other customers' private information.
+- Cannot manipulate queue positions or service statuses.
+
+BUSINESS OWNERS:
+- Can access their own business records.
+- Can manage authorized business members.
+- Can manage their own menu.
+- Can manage their own counters.
+- Can manage queues belonging to their business.
+- Can access orders belonging to their business.
+- Cannot access another business owner's private data.
+
+PUBLIC VISITORS:
+- Can view permitted public business information.
+- Cannot access private customer information.
+
+Do not rely on frontend checks as security.
+
+Create and test RLS policies.
+
+Never expose the Supabase service-role key in frontend code.
+
+Never use VITE_ or other public environment prefixes for service-role credentials.
+
+# 10. SECURE QUEUE OPERATIONS
+
+Queue management is a critical feature.
+
+Implement queue joining and queue advancement using secure database transactions or server-side operations.
+
+Requirements:
+
+- Atomic token generation.
+- No duplicate token allocation.
+- No concurrent queue corruption.
+- Correct queue ordering.
+- Correct counter assignments.
+- Correct status transitions.
+- Authorized queue updates only.
+- Prevent customers from changing their own token position.
+- Prevent unauthorized cancellation or modification.
+- Prevent duplicate order submissions.
+
+Implement appropriate PostgreSQL RPC functions or Supabase Edge Functions.
+
+Do not trust queue positions, prices or totals supplied by the browser.
+
+Recalculate sensitive values on the server.
+
+# 11. REAL-TIME FUNCTIONALITY
+
+Use Supabase Realtime where appropriate.
+
+Implement:
+
+- Queue position updates.
+- Current serving updates.
+- Queue status changes.
+- New order notifications for business owners.
+- Relevant dashboard updates.
+- Counter status updates.
+
+Subscribe only to the data necessary for each page.
+
+Clean up subscriptions when components unmount.
+
+Avoid unnecessary database polling.
+
+# 12. SUPABASE STORAGE
+
+Create storage buckets for:
+
+- Business images.
+- Business logos.
+- Menu item images.
+
+Requirements:
+
+- Validate file types.
+- Restrict file sizes.
+- Secure upload policies.
+- Restrict business image management to authorized owners.
+- Use appropriate public/private access.
+
+Do not hardcode image URLs.
+
+Use actual uploaded business images where available.
+
+# 13. APPLICATION ROUTES
+
+Implement a clean route architecture.
+
+PUBLIC ROUTES:
+
+/
+ /discover
+ /business/:slug
+ /business/register
+ /business/login
+ /how-it-works
+ /qr/:businessId
+
+CUSTOMER ROUTES:
+
+/my-queue
+/orders
+/history
+/profile
+
+BUSINESS OWNER ROUTES:
+
+/business/dashboard
+/business/queue
+/business/orders
+/business/menu
+/business/counters
+/business/analytics
+/business/profile
+/business/settings
+
+Protect private routes.
+
+Implement proper loading and unauthorized states.
+
+Preserve route navigation after refresh.
+
+# 14. RESPONSIVE DESIGN
+
+Support:
+
+- Desktop.
+- Laptop.
+- Tablet.
+- Mobile.
+
+Mobile requirements:
+
+- Responsive navigation.
+- Properly sized buttons.
+- Single-column business cards.
+- Mobile-friendly queue tracking.
+- Accessible cart.
+- Responsive dashboard.
+- Mobile sidebar drawer.
+- No horizontal overflow.
+- Readable typography.
+
+The application must feel designed for mobile, not merely shrunk from desktop.
+
+# 15. ERROR HANDLING AND UX
+
+Implement:
+
+- Loading skeletons.
+- Empty states.
+- Error states.
+- Success feedback.
+- Form validation.
+- Network error handling.
+- Authentication errors.
+- Session expiry handling.
+- Database operation feedback.
+- Confirmation before destructive actions.
+
+Never leave a button visually active if it does nothing.
+
+Never display fake success messages.
+
+Every button must perform its intended action.
+
+# 16. PROJECT STRUCTURE
+
+Create a professional source-code structure.
+
+Suggested structure:
+
+virtual-q/
+  public/
+  src/
+    assets/
+    components/
+    layouts/
+    pages/
+      customer/
+      business/
+      auth/
+    hooks/
+    contexts/
+    services/
+    lib/
+    types/
+    utils/
+    styles/
+    App.tsx
+    main.tsx
+  supabase/
+    migrations/
+    functions/
+    seed.sql
+  docs/
+    SUPABASE_SETUP.md
+    LOCAL_SETUP.md
+    VERCEL_DEPLOYMENT.md
+    DATABASE_SCHEMA.md
+    SECURITY.md
+  .env.example
+  .gitignore
+  package.json
+  index.html
+  vite.config.ts
+  tsconfig.json
+  README.md
+
+Adjust the structure if necessary, but keep it organized.
+
+# 17. ENVIRONMENT VARIABLES
+
+Provide a complete .env.example.
+
+Include only the public values required by the frontend, such as:
+
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+
+Use the appropriate current Supabase publishable key if the SDK configuration supports it.
+
+Never include the service-role key in the frontend environment.
+
+If Edge Functions need privileged credentials, configure them securely using Supabase secrets.
+
+Explain where each value is obtained in the Supabase dashboard.
+
+# 18. NO UNNECESSARY FEATURES
+
+This requirement is extremely important.
+
+Do not add:
+
+- Online payments.
+- AI chatbot.
+- Unnecessary messaging system.
+- Social network.
+- Public customer profiles.
+- Unnecessary subscriptions.
+- Unnecessary advertising.
+- Fake ratings.
+- Fake business statistics.
+- Unrequested loyalty programs.
+- Unrequested complex integrations.
+- Random dashboard widgets.
+
+Do not create additional UI sections simply to make the website look bigger.
+
+Prioritize reliability and usability.
+
+# 19. IMPLEMENTATION PROCESS
+
+Follow this sequence.
+
+PHASE 1 — PROJECT FOUNDATION
+
+- Initialize React, TypeScript and Vite.
+- Configure Tailwind.
+- Configure routing.
+- Set up reusable components.
+- Configure Supabase client.
+- Implement responsive design tokens.
+
+PHASE 2 — DATABASE AND SECURITY
+
+- Create database schema.
+- Create migrations.
+- Create indexes and constraints.
+- Enable RLS.
+- Create secure policies.
+- Create RPC functions.
+- Configure Supabase Storage.
+- Configure anonymous customer authentication.
+- Configure business-owner authentication.
+
+PHASE 3 — CUSTOMER APPLICATION
+
+- Homepage.
+- Discovery.
+- Business details.
+- Menu.
+- Cart.
+- Queue joining.
+- My Queue.
+- Live tracking.
+- Smart Arrival Assistant.
+- Queue history.
+
+PHASE 4 — BUSINESS OWNER APPLICATION
+
+- Registration.
+- Login.
+- Dashboard.
+- Queue management.
+- Automatic token advancement.
+- Multiple counters.
+- Orders.
+- Menu management.
+- QR generation.
+- Business analytics.
+- Queue settings.
+
+PHASE 5 — INTELLIGENCE
+
+- Historical wait-time calculation.
+- Predictive estimates.
+- Congestion alerts.
+
+PHASE 6 — TESTING
+
+Test the actual application with Supabase.
+
+Do not use mock data as a replacement for these tests.
+
+# 20. REQUIRED TEST SCENARIOS
+
+Verify these scenarios.
+
+CUSTOMER:
+
+1. Open homepage.
+2. Discover businesses.
+3. Search for a business.
+4. Filter business categories.
+5. Open business details.
+6. Browse menu.
+7. Add menu items to cart.
+8. Place an order.
+9. Join a queue without seeing a login form.
+10. Receive a unique token.
+11. Track queue position.
+12. See real-time updates.
+13. Use Smart Arrival Assistant.
+14. View queue history.
+15. Leave or cancel a queue according to business rules.
+
+BUSINESS OWNER:
+
+1. Register a business account.
+2. Sign in.
+3. Open dashboard.
+4. Create menu items.
+5. Edit menu items.
+6. Create counters.
+7. View waiting customers.
+8. Call the next customer.
+9. Mark service completed.
+10. Verify the next customer is advanced correctly.
+11. View orders.
+12. Generate business QR code.
+13. View analytics.
+14. Configure queue settings.
+15. Sign out.
+
+SECURITY:
+
+1. Customer A cannot read Customer B's private queue.
+2. Customer A cannot modify another customer's order.
+3. Business A cannot access Business B's private records.
+4. Unauthenticated users cannot access business dashboards.
+5. Customers cannot manipulate queue positions.
+6. Public frontend cannot access service-role credentials.
+7. Unauthorized users cannot upload or modify business assets.
+
+CONCURRENCY:
+
+Test two customers joining at nearly the same time.
+
+Verify that tokens are unique.
+
+Test two authorized staff actions attempting to advance the same queue.
+
+Verify that only one valid transition occurs.
+
+# 21. QUALITY REQUIREMENTS
+
+Before final delivery:
+
+- Run npm install.
+- Run npm run build.
+- Fix all TypeScript errors.
+- Fix all build errors.
+- Check imports.
+- Check routes.
+- Check responsive layouts.
+- Check environment configuration.
+- Check Supabase connection.
+- Check database operations.
+- Check RLS policies.
+- Check authentication.
+- Check queue concurrency.
+- Check real-time updates.
+
+Do not claim that something has been tested if it has not actually been tested.
+
+If an operation requires my Supabase credentials or dashboard configuration, provide exact instructions rather than pretending it has been completed.
+
+# 22. FINAL DELIVERABLES
+
+I need the following deliverables.
+
+1. Complete source-code project.
+2. Complete React frontend.
+3. Complete Supabase integration.
+4. SQL database migrations.
+5. RLS policies.
+6. Secure RPC functions.
+7. Supabase Edge Functions where necessary.
+8. Storage configuration.
+9. Environment variable template.
+10. Seed script with clearly identified optional demo data.
+11. README.
+12. Supabase setup guide.
+13. Local development guide.
+14. Vercel deployment guide.
+15. Security documentation.
+16. Testing checklist.
+
+The project must be downloadable as a complete folder or ZIP archive.
+
+Do not provide only individual code snippets.
+
+Do not leave major features as TODO comments.
+
+Do not leave non-functional placeholder buttons.
+
+# 23. GOOGLE AI STUDIO DOWNLOAD AND DEPLOYMENT GUIDE
+
+After completing the project, provide a detailed beginner-friendly guide.
+
+Explain:
+
+A. How to export or download the complete project from Google AI Studio.
+
+B. How to extract the ZIP file.
+
+C. How to open the folder in VS Code or Antigravity IDE.
+
+D. How to install Node.js if needed.
+
+E. How to install dependencies using npm install.
+
+F. How to create a Supabase project.
+
+G. How to obtain the Supabase URL and publishable/anon key.
+
+H. How to configure .env.local.
+
+I. How to apply database migrations.
+
+J. How to deploy Supabase Edge Functions and configure secrets, if used.
+
+K. How to configure Storage buckets.
+
+L. How to run the website locally using npm run dev.
+
+M. How to verify customer and business-owner functionality.
+
+N. How to upload the source code to GitHub.
+
+O. How to import the GitHub repository into Vercel.
+
+P. How to add environment variables in Vercel.
+
+Q. How to deploy the website.
+
+R. How to configure Supabase authentication redirect URLs for the deployed domain.
+
+S. How to configure the final production URL for QR code generation.
+
+T. How to test the deployed website.
+
+Use actual menu names and exact commands wherever possible.
+
+# 24. FINAL INSTRUCTIONS
+
+This is a complete website development task.
+
+Do not stop at planning.
+
+Do not stop after the homepage.
+
+Do not stop after producing a UI preview.
+
+Implement the frontend and backend.
+
+If a task requires an external credential, identify the exact credential and show me where to configure it.
+
+Build the entire application in a maintainable structure.
+
+Prioritize security, correctness, responsiveness and real-world usefulness.
+
+The final result should look like a premium startup product and function like a real queue management platform.
+
+**VIRTUAL-Q 2.0**
+
+Skip the wait. Live more.
+
+Build it completely.

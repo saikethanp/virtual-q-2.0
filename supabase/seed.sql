@@ -1,0 +1,13 @@
+-- ============================================================================
+-- VIRTUAL-Q 2.0 SEED SCRIPT (PRODUCTION-SAFE)
+-- ============================================================================
+-- The production database initializes 100% clean with zero demo businesses.
+-- Business owners and customers create authentic records via Supabase Auth.
+--
+-- To promote an existing registered user to Administrator:
+-- Run this query with the user's registered email in Supabase SQL Editor:
+--
+-- UPDATE public.profiles
+-- SET role = 'admin'
+-- WHERE email = 'YOUR_ADMIN_EMAIL@domain.com';
+-- ============================================================================
