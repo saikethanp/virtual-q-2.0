@@ -487,7 +487,9 @@ export const getCustomerActiveQueue = async (sessionId: string): Promise<QueueEn
       .in('status', ['waiting', 'called', 'serving']);
 
     if (userId) {
-      query = query.eq('user_id', userId);
+      query = query.or(`user_id.eq.${userId},session_id.eq.${currentSessionId}`);
+      // Claim unassociated session entries for this user in background
+      client.from('queue_entries').update({ user_id: userId }).eq('session_id', currentSessionId).is('user_id', null).then(() => {});
     } else {
       query = query.eq('session_id', currentSessionId);
     }
@@ -517,7 +519,7 @@ export const getCustomerActiveQueue = async (sessionId: string): Promise<QueueEn
   const businesses = getStored<Business[]>(STORAGE_KEYS.BUSINESSES, INITIAL_BUSINESSES);
   const counters = getStored<Counter[]>(STORAGE_KEYS.COUNTERS, INITIAL_COUNTERS);
 
-  const active = queues.find(q => q.session_id === currentSessionId && ['waiting', 'called', 'serving'].includes(q.status));
+  const active = queues.find(q => (q.session_id === currentSessionId || (q.user_id && q.user_id === currentSessionId)) && ['waiting', 'called', 'serving'].includes(q.status));
   if (!active) return null;
 
   // Calculate people ahead
@@ -550,7 +552,7 @@ export const getCustomerQueueHistory = async (sessionId: string): Promise<QueueE
       .select('*, business:businesses(*)');
 
     if (userId) {
-      query = query.eq('user_id', userId);
+      query = query.or(`user_id.eq.${userId},session_id.eq.${currentSessionId}`);
     } else {
       query = query.eq('session_id', currentSessionId);
     }
@@ -563,7 +565,7 @@ export const getCustomerQueueHistory = async (sessionId: string): Promise<QueueE
   const businesses = getStored<Business[]>(STORAGE_KEYS.BUSINESSES, INITIAL_BUSINESSES);
 
   return queues
-    .filter(q => q.session_id === currentSessionId)
+    .filter(q => q.session_id === currentSessionId || (q.user_id && q.user_id === currentSessionId))
     .map(q => ({
       ...q,
       business: businesses.find(b => b.id === q.business_id),
@@ -762,12 +764,32 @@ export const updateQueueEntryStatus = async (
       if (status === 'completed') updates.completed_at = new Date().toISOString();
 
       const { data } = await supabase.from('queue_entries').update(updates).eq('id', entryId).select().single();
+
+      // Synchronize any linked order in Supabase
+      if (status === 'serving' || status === 'completed' || status === 'cancelled') {
+        const orderStatus = status === 'serving' ? 'preparing' : (status as OrderStatus);
+        await supabase.from('orders').update({ status: orderStatus }).eq('queue_entry_id', entryId);
+      }
+
       if (data) {
         broadcastChange('queue_updated', { entryId, status });
+        broadcastChange('orders_updated', { queueEntryId: entryId, status });
         return data as QueueEntry;
       }
     } catch (e) {
       console.warn('Supabase update status error', e);
+    }
+  }
+
+  // Synchronize any linked order in local storage preview mode
+  if (status === 'serving' || status === 'completed' || status === 'cancelled') {
+    const orderStatus = status === 'serving' ? 'preparing' : (status as OrderStatus);
+    const orders = getStored<Order[]>(STORAGE_KEYS.ORDERS, []);
+    const relatedOrder = orders.find(o => o.queue_entry_id === entryId);
+    if (relatedOrder && relatedOrder.status !== orderStatus) {
+      relatedOrder.status = orderStatus;
+      setStored(STORAGE_KEYS.ORDERS, orders);
+      broadcastChange('orders_updated', { orderId: relatedOrder.id, status: orderStatus });
     }
   }
 
@@ -792,10 +814,39 @@ export const createOrder = async (params: {
   queueEntryId?: string;
   notes?: string;
 }): Promise<Order> => {
-  const { sessionId } = await ensureCustomerSession();
+  const { userId, sessionId } = await ensureCustomerSession();
   const client = customerSupabase || supabase;
 
+  // Ensure customer has an active queue entry for this business
+  let finalQueueEntryId = params.queueEntryId || null;
+
   if (isSupabaseConfigured() && client) {
+    if (!finalQueueEntryId) {
+      const activeQueue = await getCustomerActiveQueue(sessionId);
+      if (activeQueue && activeQueue.business_id === params.businessId && ['waiting', 'called', 'serving'].includes(activeQueue.status)) {
+        finalQueueEntryId = activeQueue.id;
+      } else {
+        // Auto-join queue so customer has a digital queue token for their order
+        const joinResult = await joinQueue({
+          businessId: params.businessId,
+          customerName: params.customerName,
+          notes: 'Auto-token generated on order placement',
+        });
+        if (joinResult.success && joinResult.entry) {
+          finalQueueEntryId = joinResult.entry.id;
+        }
+      }
+    }
+
+    // Ensure ownership alignment for atomic order placement
+    if (userId && finalQueueEntryId) {
+      try {
+        await client.from('queue_entries').update({ user_id: userId }).eq('id', finalQueueEntryId);
+      } catch (err) {
+        console.warn('Queue ownership check note:', err);
+      }
+    }
+
     const rpcItems = params.items.map(it => ({
       menu_item_id: it.menuItem.id,
       quantity: it.quantity,
@@ -805,7 +856,7 @@ export const createOrder = async (params: {
       p_business_id: params.businessId,
       p_customer_name: params.customerName.trim(),
       p_items: rpcItems,
-      p_queue_entry_id: params.queueEntryId || null,
+      p_queue_entry_id: finalQueueEntryId,
       p_session_id: sessionId,
       p_notes: params.notes?.trim() || null,
     });
@@ -817,6 +868,8 @@ export const createOrder = async (params: {
 
     if (data && data.success) {
       broadcastChange('orders_updated', { orderId: data.order_id });
+      broadcastChange('queue_updated', { businessId: params.businessId });
+
       // Fetch the created order with trusted database items
       const { data: orderData } = await client
         .from('orders')
@@ -831,6 +884,7 @@ export const createOrder = async (params: {
       return {
         id: data.order_id,
         business_id: params.businessId,
+        queue_entry_id: finalQueueEntryId,
         session_id: sessionId,
         order_number: data.order_number,
         customer_name: params.customerName,
@@ -845,6 +899,22 @@ export const createOrder = async (params: {
   }
 
   // Local storage preview mode
+  if (!finalQueueEntryId) {
+    const localActive = await getCustomerActiveQueue(sessionId);
+    if (localActive && localActive.business_id === params.businessId) {
+      finalQueueEntryId = localActive.id;
+    } else {
+      const joinResult = await joinQueue({
+        businessId: params.businessId,
+        customerName: params.customerName,
+        notes: 'Order placed',
+      });
+      if (joinResult.success && joinResult.entry) {
+        finalQueueEntryId = joinResult.entry.id;
+      }
+    }
+  }
+
   const totalAmount = params.items.reduce((sum, item) => sum + item.menuItem.price * item.quantity, 0);
   const orderNumber = 'ORD-' + Math.floor(100 + Math.random() * 900);
   const orderId = crypto.randomUUID();
@@ -861,7 +931,7 @@ export const createOrder = async (params: {
   const newOrder: Order = {
     id: orderId,
     business_id: params.businessId,
-    queue_entry_id: params.queueEntryId || null,
+    queue_entry_id: finalQueueEntryId,
     session_id: sessionId,
     order_number: orderNumber,
     customer_name: params.customerName,
@@ -877,6 +947,7 @@ export const createOrder = async (params: {
   orders.unshift(newOrder);
   setStored(STORAGE_KEYS.ORDERS, orders);
   broadcastChange('orders_updated', newOrder);
+  broadcastChange('queue_updated', { businessId: params.businessId });
   return newOrder;
 };
 
@@ -906,7 +977,9 @@ export const getCustomerOrders = async (sessionId?: string): Promise<Order[]> =>
       .order('created_at', { ascending: false });
 
     if (userId) {
-      query = query.eq('user_id', userId);
+      query = query.or(`user_id.eq.${userId},session_id.eq.${currentSessionId}`);
+      // Claim unassociated session orders for this user in background
+      client.from('orders').update({ user_id: userId }).eq('session_id', currentSessionId).is('user_id', null).then(() => {});
     } else {
       query = query.eq('session_id', currentSessionId);
     }
@@ -918,11 +991,19 @@ export const getCustomerOrders = async (sessionId?: string): Promise<Order[]> =>
   const allOrders = getStored<Order[]>(STORAGE_KEYS.ORDERS, []);
   const businesses = getStored<Business[]>(STORAGE_KEYS.BUSINESSES, INITIAL_BUSINESSES);
   return allOrders
-    .filter(o => o.session_id === currentSessionId)
+    .filter(o => o.session_id === currentSessionId || (o.user_id && o.user_id === currentSessionId))
     .map(o => ({
       ...o,
       business: businesses.find(b => b.id === o.business_id),
     }));
+};
+
+export const getCustomerActiveOrders = async (sessionId?: string): Promise<Order[]> => {
+  const orders = await getCustomerOrders(sessionId);
+  return orders.filter(o => 
+    ['pending', 'accepted', 'preparing', 'ready'].includes(o.status) || 
+    (o.status === 'completed' && (Date.now() - new Date(o.created_at).getTime() < 4 * 3600 * 1000))
+  );
 };
 
 export const updateOrderStatus = async (orderId: string, status: OrderStatus): Promise<Order | null> => {
@@ -934,22 +1015,13 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
     setStored(STORAGE_KEYS.ORDERS, orders);
   }
 
-  // Also synchronize any associated queue entry token if present
-  if (order?.queue_entry_id) {
-    if (status === 'preparing') {
-      updateQueueEntryStatus(order.queue_entry_id, 'serving');
-    } else if (status === 'completed') {
-      updateQueueEntryStatus(order.queue_entry_id, 'completed');
-    } else if (status === 'cancelled') {
-      updateQueueEntryStatus(order.queue_entry_id, 'cancelled');
-    }
-  }
+  let queueEntryId = order?.queue_entry_id;
 
   if (isSupabaseConfigured() && supabase) {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .update({ status })
+        .update({ status, updated_at: new Date().toISOString() })
         .eq('id', orderId)
         .select()
         .single();
@@ -957,15 +1029,29 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
       if (error) {
         console.error('Supabase update order status error:', error);
       } else if (data) {
-        broadcastChange('orders_updated', { orderId, status });
-        return data as Order;
+        if (data.queue_entry_id) {
+          queueEntryId = data.queue_entry_id;
+        }
       }
     } catch (err) {
       console.error('Error updating order status in Supabase:', err);
     }
   }
 
+  // Also synchronize any associated queue entry token if present
+  if (queueEntryId) {
+    let queueStatus: QueueStatus | null = null;
+    if (status === 'preparing') queueStatus = 'serving';
+    else if (status === 'completed') queueStatus = 'completed';
+    else if (status === 'cancelled') queueStatus = 'cancelled';
+
+    if (queueStatus) {
+      await updateQueueEntryStatus(queueEntryId, queueStatus);
+    }
+  }
+
   broadcastChange('orders_updated', { orderId, status });
+  broadcastChange('queue_updated', { orderId, status });
   return order || null;
 };
 
@@ -1469,10 +1555,25 @@ export const registerCustomer = async (data: {
       });
 
       if (authError || !authData.user) {
+        const errorMsg = authError?.message || '';
+        if (errorMsg.toLowerCase().includes('already registered') || (authError as any)?.code === 'user_already_exists') {
+          return {
+            success: false,
+            message: 'This mobile number or email is already registered. Please sign in with your password.',
+          };
+        }
         return {
           success: false,
-          message: authError?.message || 'Failed to register customer account.',
+          message: errorMsg || 'Failed to register customer account.',
         };
+      }
+
+      // If session not returned directly, establish active session immediately
+      if (!authData.session) {
+        await client.auth.signInWithPassword({
+          email: cleanEmail,
+          password: data.password,
+        });
       }
 
       const newCustomer: CustomerProfile = {
@@ -1485,16 +1586,31 @@ export const registerCustomer = async (data: {
       };
 
       // Upsert profile record
-      await client.from('profiles').upsert({
-        id: authData.user.id,
-        full_name: data.fullName.trim(),
-        email: cleanEmail,
-        phone: cleanPhone,
-        role: 'customer',
-        updated_at: new Date().toISOString(),
-      });
+      try {
+        await client.from('profiles').upsert({
+          id: authData.user.id,
+          full_name: data.fullName.trim(),
+          email: cleanEmail,
+          phone: cleanPhone,
+          role: 'customer',
+          updated_at: new Date().toISOString(),
+        });
+      } catch (profileErr) {
+        console.warn('Profile upsert note:', profileErr);
+      }
+
+      // Link any prior session queue tokens and orders to this newly authenticated user
+      const currentSessionId = getCustomerSessionId();
+      try {
+        await client.from('queue_entries').update({ user_id: authData.user.id }).eq('session_id', currentSessionId);
+        await client.from('orders').update({ user_id: authData.user.id }).eq('session_id', currentSessionId);
+      } catch (linkErr) {
+        console.warn('Session linkage note:', linkErr);
+      }
 
       setCustomerSession(newCustomer);
+      broadcastChange('queue_updated');
+      broadcastChange('orders_updated');
       return { success: true, customer: newCustomer };
     } catch (err: unknown) {
       console.error('Customer registration error:', err);
@@ -1557,7 +1673,18 @@ export const signInCustomer = async (
         role: 'customer',
       };
 
+      // Link any prior session queue tokens and orders to this newly authenticated user
+      const currentSessionId = getCustomerSessionId();
+      try {
+        await client.from('queue_entries').update({ user_id: data.user.id }).eq('session_id', currentSessionId);
+        await client.from('orders').update({ user_id: data.user.id }).eq('session_id', currentSessionId);
+      } catch (linkErr) {
+        console.warn('Session linkage note:', linkErr);
+      }
+
       setCustomerSession(customer);
+      broadcastChange('queue_updated');
+      broadcastChange('orders_updated');
       return { success: true, customer };
     } catch (err: unknown) {
       console.error('Customer login error:', err);

@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { QueueEntry } from '../types';
+import { QueueEntry, Order } from '../types';
 import { 
   getCustomerActiveQueue, 
   getCustomerQueueHistory, 
+  getCustomerActiveOrders,
   joinQueue as apiJoinQueue, 
   cancelQueueEntry as apiCancelQueue,
   updateQueueEntryStatus
@@ -12,6 +13,7 @@ import { getCustomerSessionId, ensureCustomerSession, isSupabaseConfigured, supa
 interface QueueContextType {
   activeQueue: QueueEntry | null;
   queueHistory: QueueEntry[];
+  activeOrders: Order[];
   loading: boolean;
   join: (businessId: string, customerName: string, customerPhone?: string, travelMinutes?: number, notes?: string) => Promise<{ success: boolean; message?: string }>;
   leave: () => Promise<boolean>;
@@ -30,6 +32,7 @@ const QueueContext = createContext<QueueContextType | undefined>(undefined);
 export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeQueue, setActiveQueue] = useState<QueueEntry | null>(null);
   const [queueHistory, setQueueHistory] = useState<QueueEntry[]>([]);
+  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [travelMinutes, setTravelMinutes] = useState<number>(0);
 
@@ -37,15 +40,19 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const refreshQueue = useCallback(async () => {
     try {
-      const active = await getCustomerActiveQueue(sessionId);
-      const history = await getCustomerQueueHistory(sessionId);
+      const [active, history, orders] = await Promise.all([
+        getCustomerActiveQueue(sessionId),
+        getCustomerQueueHistory(sessionId),
+        getCustomerActiveOrders(sessionId),
+      ]);
       setActiveQueue(active);
       setQueueHistory(history);
+      setActiveOrders(orders);
       if (active?.travel_time_minutes) {
         setTravelMinutes(active.travel_time_minutes);
       }
     } catch (err) {
-      console.error('Error refreshing queue:', err);
+      console.error('Error refreshing queue & orders:', err);
     } finally {
       setLoading(false);
     }
@@ -62,11 +69,12 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     window.addEventListener('vq_realtime_event', handleRealtime);
 
-    // Supabase Realtime subscription if configured
-    let channel: any = null;
+    // Supabase Realtime subscriptions if configured
+    let queueChannel: any = null;
+    let ordersChannel: any = null;
     const client = customerSupabase || supabase;
     if (isSupabaseConfigured() && client) {
-      channel = client
+      queueChannel = client
         .channel('public:queue_entries')
         .on(
           'postgres_changes',
@@ -76,15 +84,29 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
         )
         .subscribe();
+
+      ordersChannel = client
+        .channel('public:orders')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'orders' },
+          () => {
+            refreshQueue();
+          }
+        )
+        .subscribe();
     }
 
-    // Fast refresh interval (3 seconds) for live queue transitions
+    // Fast refresh interval (3 seconds) for live queue & order transitions
     const interval = setInterval(refreshQueue, 3000);
 
     return () => {
       window.removeEventListener('vq_realtime_event', handleRealtime);
-      if (channel && supabase) {
-        (supabase as any).removeChannel(channel);
+      if (queueChannel && client) {
+        (client as any).removeChannel(queueChannel);
+      }
+      if (ordersChannel && client) {
+        (client as any).removeChannel(ordersChannel);
       }
       clearInterval(interval);
     };
@@ -185,6 +207,7 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <QueueContext.Provider value={{
       activeQueue,
       queueHistory,
+      activeOrders,
       loading,
       join,
       leave,

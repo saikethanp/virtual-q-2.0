@@ -1,7 +1,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const DEFAULT_SUPABASE_URL = 'https://oyyxsegrfwlyngogwhzv.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_osyrx--6W8rLozyQQY4k_g_zR_bBF3L';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = (): boolean => {
   return Boolean(
@@ -65,18 +68,6 @@ export const ensureCustomerSession = async (): Promise<{ userId: string | null; 
       }
     } catch (err) {
       console.warn('Customer session read note:', err);
-    }
-  }
-
-  // Fallback to primary client if customerSupabase has no separate session
-  if (isSupabaseConfigured() && supabase) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        return { userId: session.user.id, sessionId };
-      }
-    } catch (err) {
-      console.warn('Supabase session read note:', err);
     }
   }
 

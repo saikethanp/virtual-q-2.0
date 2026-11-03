@@ -138,16 +138,12 @@ export const BusinessDetailsPage: React.FC<BusinessDetailsPageProps> = ({ slug, 
       setOrderSuccess(true);
       setTimeout(() => {
         setOrderSuccess(false);
-        navigate('/orders');
-      }, 1500);
+        navigate('/my-queue');
+      }, 1000);
     } catch (err: unknown) {
       console.error(err);
       const msg = err instanceof Error ? err.message : 'Failed to place order. Please try again.';
-      if (msg.includes('Authentication required')) {
-        setShowAuthModal(true);
-      } else {
-        setOrderError(msg);
-      }
+      setOrderError(msg);
     } finally {
       setOrderPlacing(false);
     }
@@ -351,6 +347,18 @@ export const BusinessDetailsPage: React.FC<BusinessDetailsPageProps> = ({ slug, 
                 </div>
               ) : (
                 <div className="pt-4 flex flex-col gap-4">
+                  {!isCurrentBusinessInCart && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between gap-2">
+                      <span>Your cart contains items from another business.</span>
+                      <button
+                        onClick={clearCart}
+                        className="px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold rounded-lg shrink-0 cursor-pointer"
+                      >
+                        Clear Cart
+                      </button>
+                    </div>
+                  )}
+
                   {/* Cart Item rows */}
                   <div className="flex flex-col gap-3 max-h-72 overflow-y-auto pr-1">
                     {items.map(({ menuItem, quantity }) => (

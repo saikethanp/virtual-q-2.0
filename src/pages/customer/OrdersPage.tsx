@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Clock, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Order } from '../../types';
 import { getCustomerOrders } from '../../services/api';
-import { isSupabaseConfigured, supabase } from '../../lib/supabase';
+import { isSupabaseConfigured, supabase, customerSupabase } from '../../lib/supabase';
 
 interface OrdersPageProps {
   navigate: (route: string) => void;
@@ -27,8 +27,9 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ navigate }) => {
 
     // Supabase Realtime subscription for instant live customer order updates
     let channel: any = null;
-    if (isSupabaseConfigured() && supabase) {
-      channel = supabase
+    const client = customerSupabase || supabase;
+    if (isSupabaseConfigured() && client) {
+      channel = client
         .channel('public:orders_customer')
         .on(
           'postgres_changes',
@@ -40,12 +41,12 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ navigate }) => {
         .subscribe();
     }
 
-    const interval = setInterval(load, 5000);
+    const interval = setInterval(load, 4000);
 
     return () => {
       window.removeEventListener('vq_realtime_event', handleRealtime);
-      if (channel && supabase) {
-        (supabase as any).removeChannel(channel);
+      if (channel && client) {
+        (client as any).removeChannel(channel);
       }
       clearInterval(interval);
     };

@@ -32,6 +32,16 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
   const { customerLogin, customerRegister } = useAuth();
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setError('');
+      setSuccessMsg('');
+      setLoading(false);
+      setPassword('');
+      setConfirmPassword('');
+    }
+  }, [isOpen, mode]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,6 +84,12 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
       if (!res.success) {
         setError(res.message || 'Registration failed. Please try again.');
+        if (res.message?.toLowerCase().includes('already registered')) {
+          setTimeout(() => {
+            setMode('login');
+            setError('Please enter your password to sign in.');
+          }, 1500);
+        }
         return;
       }
 
@@ -81,7 +97,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       setTimeout(() => {
         onSuccess?.(res.customer);
         onClose();
-      }, 500);
+      }, 300);
     } else {
       // Login mode: allow email OR mobile number
       const loginIdentifier = phone.trim() || email.trim();
@@ -103,7 +119,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
       setTimeout(() => {
         onSuccess?.(res.customer);
         onClose();
-      }, 400);
+      }, 300);
     }
   };
 
