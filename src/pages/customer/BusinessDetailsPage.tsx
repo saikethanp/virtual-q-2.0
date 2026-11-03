@@ -14,7 +14,7 @@ import {
   Share2,
   QrCode
 } from 'lucide-react';
-import { Business, MenuItem } from '../../types';
+import { Business, MenuItem, CustomerProfile } from '../../types';
 import { getBusinessBySlug, getMenuItems, createOrder } from '../../services/api';
 import { useCart } from '../../contexts/CartContext';
 import { useQueue } from '../../contexts/QueueContext';
@@ -113,11 +113,13 @@ export const BusinessDetailsPage: React.FC<BusinessDetailsPageProps> = ({ slug, 
     }
   };
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = async (overrideCustomer?: CustomerProfile) => {
     if (items.length === 0) return;
 
+    const activeCust = overrideCustomer || customer;
+
     // Check if customer is authenticated
-    if (!customer) {
+    if (!activeCust) {
       setShowAuthModal(true);
       return;
     }
@@ -127,7 +129,7 @@ export const BusinessDetailsPage: React.FC<BusinessDetailsPageProps> = ({ slug, 
     try {
       await createOrder({
         businessId: business.id,
-        customerName: customer.full_name || activeQueue?.customer_name || 'Customer',
+        customerName: activeCust.full_name || activeQueue?.customer_name || 'Customer',
         queueEntryId: activeQueue?.id,
         items,
         notes: 'Pay at counter',
@@ -401,7 +403,7 @@ export const BusinessDetailsPage: React.FC<BusinessDetailsPageProps> = ({ slug, 
                   )}
 
                   <button
-                    onClick={handlePlaceOrder}
+                    onClick={() => handlePlaceOrder()}
                     disabled={orderPlacing}
                     className="w-full py-3.5 rounded-2xl bg-[#3D2010] text-[#FAF8F5] font-bold text-sm shadow-sm hover:bg-[#2A150A] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
@@ -511,9 +513,9 @@ export const BusinessDetailsPage: React.FC<BusinessDetailsPageProps> = ({ slug, 
       <CustomerAuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
+        onSuccess={(loggedCust) => {
           setShowAuthModal(false);
-          handlePlaceOrder();
+          handlePlaceOrder(loggedCust);
         }}
         title="Sign in to Place Order"
         subtitle="Sign in or create your customer account to place your order."

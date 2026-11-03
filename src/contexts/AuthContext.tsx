@@ -32,13 +32,13 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshOwnerBusiness: () => Promise<void>;
   // Customer Authentication Methods
-  customerLogin: (identifier: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  customerLogin: (identifier: string, password: string) => Promise<{ success: boolean; customer?: CustomerProfile; message?: string }>;
   customerRegister: (data: {
     fullName: string;
     email?: string;
     phone: string;
     password: string;
-  }) => Promise<{ success: boolean; message?: string }>;
+  }) => Promise<{ success: boolean; customer?: CustomerProfile; message?: string }>;
   customerLogout: () => Promise<void>;
 }
 
@@ -210,15 +210,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Customer Auth Methods
-  const customerLogin = async (identifier: string, password: string): Promise<{ success: boolean; message?: string }> => {
+  const customerLogin = async (identifier: string, password: string): Promise<{ success: boolean; customer?: CustomerProfile; message?: string }> => {
     setLoading(true);
     const result = await signInCustomer(identifier, password);
     if (result.success && result.customer) {
       setCustomer(result.customer);
-      setOwner(null);
-      setBusiness(null);
       setLoading(false);
-      return { success: true };
+      return { success: true, customer: result.customer };
     }
     setLoading(false);
     return { success: false, message: result.message || 'Invalid mobile number, email, or password.' };
@@ -229,15 +227,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     email?: string;
     phone: string;
     password: string;
-  }): Promise<{ success: boolean; message?: string }> => {
+  }): Promise<{ success: boolean; customer?: CustomerProfile; message?: string }> => {
     setLoading(true);
     const result = await registerCustomer(data);
     if (result.success && result.customer) {
       setCustomer(result.customer);
-      setOwner(null);
-      setBusiness(null);
       setLoading(false);
-      return { success: true };
+      return { success: true, customer: result.customer };
     }
     setLoading(false);
     return { success: false, message: result.message || 'Registration failed.' };

@@ -476,11 +476,12 @@ export const getBusinessQueue = async (businessId: string): Promise<QueueEntry[]
 
 export const getCustomerActiveQueue = async (sessionId: string): Promise<QueueEntry | null> => {
   const currentSessionId = sessionId || getCustomerSessionId();
+  const client = customerSupabase || supabase;
 
-  if (isSupabaseConfigured() && supabase) {
+  if (isSupabaseConfigured() && client) {
     const { userId } = await ensureCustomerSession();
 
-    let query = supabase
+    let query = client
       .from('queue_entries')
       .select('*, business:businesses(*), counter:counters(*)')
       .in('status', ['waiting', 'called', 'serving']);
@@ -498,7 +499,7 @@ export const getCustomerActiveQueue = async (sessionId: string): Promise<QueueEn
 
     if (!error && data) {
       // Calculate people ahead
-      const { count } = await supabase
+      const { count } = await client
         .from('queue_entries')
         .select('*', { count: 'exact', head: true })
         .eq('business_id', data.business_id)
@@ -539,11 +540,12 @@ export const getCustomerActiveQueue = async (sessionId: string): Promise<QueueEn
 
 export const getCustomerQueueHistory = async (sessionId: string): Promise<QueueEntry[]> => {
   const currentSessionId = sessionId || getCustomerSessionId();
+  const client = customerSupabase || supabase;
 
-  if (isSupabaseConfigured() && supabase) {
+  if (isSupabaseConfigured() && client) {
     const { userId } = await ensureCustomerSession();
 
-    let query = supabase
+    let query = client
       .from('queue_entries')
       .select('*, business:businesses(*)');
 
@@ -577,10 +579,11 @@ export const joinQueue = async (params: {
   notes?: string;
 }): Promise<{ success: boolean; entry?: QueueEntry; message?: string }> => {
   const { sessionId } = await ensureCustomerSession();
+  const client = customerSupabase || supabase;
 
   // Try Supabase RPC
-  if (isSupabaseConfigured() && supabase) {
-    const { data, error } = await supabase.rpc('rpc_join_queue', {
+  if (isSupabaseConfigured() && client) {
+    const { data, error } = await client.rpc('rpc_join_queue', {
       p_business_id: params.businessId,
       p_session_id: sessionId,
       p_customer_name: params.customerName.trim(),
@@ -790,14 +793,15 @@ export const createOrder = async (params: {
   notes?: string;
 }): Promise<Order> => {
   const { sessionId } = await ensureCustomerSession();
+  const client = customerSupabase || supabase;
 
-  if (isSupabaseConfigured() && supabase) {
+  if (isSupabaseConfigured() && client) {
     const rpcItems = params.items.map(it => ({
       menu_item_id: it.menuItem.id,
       quantity: it.quantity,
     }));
 
-    const { data, error } = await supabase.rpc('rpc_create_order', {
+    const { data, error } = await client.rpc('rpc_create_order', {
       p_business_id: params.businessId,
       p_customer_name: params.customerName.trim(),
       p_items: rpcItems,
@@ -814,7 +818,7 @@ export const createOrder = async (params: {
     if (data && data.success) {
       broadcastChange('orders_updated', { orderId: data.order_id });
       // Fetch the created order with trusted database items
-      const { data: orderData } = await supabase
+      const { data: orderData } = await client
         .from('orders')
         .select('*, items:order_items(*), business:businesses(*)')
         .eq('id', data.order_id)
@@ -892,10 +896,11 @@ export const getOrdersByBusiness = async (businessId: string): Promise<Order[]> 
 
 export const getCustomerOrders = async (sessionId?: string): Promise<Order[]> => {
   const currentSessionId = sessionId || getCustomerSessionId();
-  if (isSupabaseConfigured() && supabase) {
+  const client = customerSupabase || supabase;
+  if (isSupabaseConfigured() && client) {
     const { userId } = await ensureCustomerSession();
 
-    let query = supabase
+    let query = client
       .from('orders')
       .select('*, items:order_items(*), business:businesses(*)')
       .order('created_at', { ascending: false });

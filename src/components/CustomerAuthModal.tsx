@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 interface CustomerAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (cust?: any) => void;
   initialMode?: 'login' | 'register';
   title?: string;
   subtitle?: string;
@@ -79,7 +79,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
       setSuccessMsg('Account created successfully!');
       setTimeout(() => {
-        onSuccess?.();
+        onSuccess?.(res.customer);
         onClose();
       }, 500);
     } else {
@@ -101,7 +101,7 @@ export const CustomerAuthModal: React.FC<CustomerAuthModalProps> = ({
 
       setSuccessMsg('Signed in successfully!');
       setTimeout(() => {
-        onSuccess?.();
+        onSuccess?.(res.customer);
         onClose();
       }, 400);
     }
