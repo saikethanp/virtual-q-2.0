@@ -51,6 +51,8 @@ import {
   advanceQueue,
   updateQueueEntryStatus,
   updateOrderStatus,
+  clearOrdersByBusiness,
+  deleteOrder,
   createMenuItem,
   updateMenuItem,
   deleteMenuItem,
@@ -350,6 +352,23 @@ export const BusinessDashboardPage: React.FC<BusinessDashboardPageProps> = ({
       console.error('Failed to update order status:', err);
     } finally {
       setSavingOrderId(null);
+    }
+  };
+
+  const handleClearAllOrders = async () => {
+    if (!businessId) return;
+    if (window.confirm('Are you sure you want to clear all orders? This action cannot be undone.')) {
+      setActionLoading(true);
+      await clearOrdersByBusiness(businessId);
+      await loadDashboardData();
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteSingleOrder = async (orderId: string) => {
+    if (window.confirm('Delete this order?')) {
+      await deleteOrder(orderId);
+      await loadDashboardData();
     }
   };
 
@@ -1052,6 +1071,16 @@ export const BusinessDashboardPage: React.FC<BusinessDashboardPageProps> = ({
                   <h1 className="text-2xl font-bold text-[#171412]">Order Management</h1>
                   <p className="text-xs text-[#766B63] mt-0.5">Pre-orders placed by queue customers for counter pickup.</p>
                 </div>
+                {orders.length > 0 && (
+                  <button
+                    onClick={handleClearAllOrders}
+                    disabled={actionLoading}
+                    className="px-3.5 py-2 rounded-xl bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Clear All Orders</span>
+                  </button>
+                )}
               </div>
 
               <div className="bg-white rounded-3xl border border-[#EFECE6] p-6 shadow-sm">
@@ -1123,6 +1152,15 @@ export const BusinessDashboardPage: React.FC<BusinessDashboardPageProps> = ({
                             ) : (
                               <span>Save</span>
                             )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSingleOrder(order.id)}
+                            className="p-2 rounded-xl border border-transparent hover:border-red-200 text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            title="Delete this order"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>

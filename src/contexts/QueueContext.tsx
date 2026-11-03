@@ -7,7 +7,7 @@ import {
   cancelQueueEntry as apiCancelQueue,
   updateQueueEntryStatus
 } from '../services/api';
-import { getCustomerSessionId, ensureCustomerSession, isSupabaseConfigured, supabase } from '../lib/supabase';
+import { getCustomerSessionId, ensureCustomerSession, isSupabaseConfigured, supabase, customerSupabase } from '../lib/supabase';
 
 interface QueueContextType {
   activeQueue: QueueEntry | null;
@@ -64,8 +64,9 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Supabase Realtime subscription if configured
     let channel: any = null;
-    if (isSupabaseConfigured() && supabase) {
-      channel = supabase
+    const client = customerSupabase || supabase;
+    if (isSupabaseConfigured() && client) {
+      channel = client
         .channel('public:queue_entries')
         .on(
           'postgres_changes',
@@ -77,8 +78,8 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .subscribe();
     }
 
-    // Refresh every 10 seconds for updated time
-    const interval = setInterval(refreshQueue, 10000);
+    // Fast refresh interval (3 seconds) for live queue transitions
+    const interval = setInterval(refreshQueue, 3000);
 
     return () => {
       window.removeEventListener('vq_realtime_event', handleRealtime);

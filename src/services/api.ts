@@ -934,6 +934,17 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
     setStored(STORAGE_KEYS.ORDERS, orders);
   }
 
+  // Also synchronize any associated queue entry token if present
+  if (order?.queue_entry_id) {
+    if (status === 'preparing') {
+      updateQueueEntryStatus(order.queue_entry_id, 'serving');
+    } else if (status === 'completed') {
+      updateQueueEntryStatus(order.queue_entry_id, 'completed');
+    } else if (status === 'cancelled') {
+      updateQueueEntryStatus(order.queue_entry_id, 'cancelled');
+    }
+  }
+
   if (isSupabaseConfigured() && supabase) {
     try {
       const { data, error } = await supabase
@@ -956,6 +967,48 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
 
   broadcastChange('orders_updated', { orderId, status });
   return order || null;
+};
+
+export const clearOrdersByBusiness = async (businessId: string): Promise<boolean> => {
+  // Clear local storage orders for this business
+  const allOrders = getStored<Order[]>(STORAGE_KEYS.ORDERS, []);
+  const remaining = allOrders.filter(o => o.business_id !== businessId);
+  setStored(STORAGE_KEYS.ORDERS, remaining);
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('business_id', businessId);
+
+      if (error) {
+        console.error('Supabase clear orders error:', error);
+      }
+    } catch (err) {
+      console.error('Error clearing orders from Supabase:', err);
+    }
+  }
+
+  broadcastChange('orders_updated', { businessId, cleared: true });
+  return true;
+};
+
+export const deleteOrder = async (orderId: string): Promise<boolean> => {
+  const allOrders = getStored<Order[]>(STORAGE_KEYS.ORDERS, []);
+  const remaining = allOrders.filter(o => o.id !== orderId);
+  setStored(STORAGE_KEYS.ORDERS, remaining);
+
+  if (isSupabaseConfigured() && supabase) {
+    try {
+      await supabase.from('orders').delete().eq('id', orderId);
+    } catch (err) {
+      console.error('Error deleting order from Supabase:', err);
+    }
+  }
+
+  broadcastChange('orders_updated', { orderId, deleted: true });
+  return true;
 };
 
 // -----------------------------------------------------------------------------
