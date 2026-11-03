@@ -343,6 +343,9 @@ export const BusinessDashboardPage: React.FC<BusinessDashboardPageProps> = ({
     if (!finalStatus) return;
 
     setSavingOrderId(orderId);
+    // Instant optimistic UI update
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: finalStatus } : o));
+
     try {
       await updateOrderStatus(orderId, finalStatus);
       setSavedOrderSuccess(orderId);
@@ -357,18 +360,34 @@ export const BusinessDashboardPage: React.FC<BusinessDashboardPageProps> = ({
 
   const handleClearAllOrders = async () => {
     if (!businessId) return;
-    if (window.confirm('Are you sure you want to clear all orders? This action cannot be undone.')) {
+    if (window.confirm('Are you sure you want to permanently clear all orders? This action cannot be undone.')) {
       setActionLoading(true);
-      await clearOrdersByBusiness(businessId);
-      await loadDashboardData();
-      setActionLoading(false);
+      // Instant optimistic UI update
+      setOrders([]);
+      try {
+        await clearOrdersByBusiness(businessId);
+        await loadDashboardData();
+      } catch (err) {
+        console.error('Failed to clear orders:', err);
+      } finally {
+        setActionLoading(false);
+      }
     }
   };
 
   const handleDeleteSingleOrder = async (orderId: string) => {
-    if (window.confirm('Delete this order?')) {
-      await deleteOrder(orderId);
-      await loadDashboardData();
+    if (window.confirm('Delete this order permanently?')) {
+      setActionLoading(true);
+      // Instant optimistic UI update
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      try {
+        await deleteOrder(orderId);
+        await loadDashboardData();
+      } catch (err) {
+        console.error('Failed to delete order:', err);
+      } finally {
+        setActionLoading(false);
+      }
     }
   };
 

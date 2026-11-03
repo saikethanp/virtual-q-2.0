@@ -96,19 +96,18 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({ navigate }) => {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${
-                      order.status === 'completed'
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${order.status === 'completed'
                         ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
                         : order.status === 'ready'
-                        ? 'bg-blue-100 text-blue-900 border border-blue-200 animate-pulse'
-                        : order.status === 'preparing'
-                        ? 'bg-purple-100 text-purple-900 border border-purple-200'
-                        : order.status === 'accepted'
-                        ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
-                        : order.status === 'cancelled' || order.status === 'rejected'
-                        ? 'bg-red-100 text-red-900 border border-red-200'
-                        : 'bg-amber-100 text-amber-900 border border-amber-200'
-                    }`}>
+                          ? 'bg-blue-100 text-blue-900 border border-blue-200 animate-pulse'
+                          : order.status === 'preparing'
+                            ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                            : order.status === 'accepted'
+                              ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+                              : order.status === 'cancelled' || order.status === 'rejected'
+                                ? 'bg-red-100 text-red-900 border border-red-200'
+                                : 'bg-amber-100 text-amber-900 border border-amber-200'
+                      }`}>
                       {order.status === 'ready' ? 'Ready for Pickup' : order.status}
                     </span>
                     <span className="text-xs text-[#8C8075]">

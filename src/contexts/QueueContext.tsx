@@ -64,7 +64,18 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     });
 
     // Listen for custom real-time events across windows/components
-    const handleRealtime = () => {
+    const handleRealtime = (e: any) => {
+      const detail = e?.detail?.detail;
+      if (detail?.orderId && detail?.status) {
+        // Instantaneous state update on customer page
+        setActiveOrders(prev => prev.map(o => o.id === detail.orderId ? { ...o, status: detail.status } : o));
+      }
+      if (detail?.cleared) {
+        setActiveOrders([]);
+      }
+      if (detail?.orderId && detail?.deleted) {
+        setActiveOrders(prev => prev.filter(o => o.id !== detail.orderId));
+      }
       refreshQueue();
     };
     window.addEventListener('vq_realtime_event', handleRealtime);
@@ -75,30 +86,40 @@ export const QueueProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const client = customerSupabase || supabase;
     if (isSupabaseConfigured() && client) {
       queueChannel = client
-        .channel('public:queue_entries')
+        .channel('public:queue_entries_customer_live')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'queue_entries' },
-          () => {
+          (payload: any) => {
+            if (payload?.new && payload.new.id) {
+              const updated = payload.new;
+              setActiveQueue(prev => prev && prev.id === updated.id ? { ...prev, status: updated.status } : prev);
+            }
             refreshQueue();
           }
         )
         .subscribe();
 
       ordersChannel = client
-        .channel('public:orders')
+        .channel('public:orders_customer_live')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'orders' },
-          () => {
+          (payload: any) => {
+            if (payload?.new && payload.new.id) {
+              const updated = payload.new;
+              setActiveOrders(prev => prev.map(o => o.id === updated.id ? { ...o, status: updated.status } : o));
+            } else if (payload?.eventType === 'DELETE' && payload?.old?.id) {
+              setActiveOrders(prev => prev.filter(o => o.id !== payload.old.id));
+            }
             refreshQueue();
           }
         )
         .subscribe();
     }
 
-    // Fast refresh interval (3 seconds) for live queue & order transitions
-    const interval = setInterval(refreshQueue, 3000);
+    // Fast refresh interval (2.5 seconds) for live queue & order transitions
+    const interval = setInterval(refreshQueue, 2500);
 
     return () => {
       window.removeEventListener('vq_realtime_event', handleRealtime);

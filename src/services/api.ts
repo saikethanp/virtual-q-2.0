@@ -489,7 +489,7 @@ export const getCustomerActiveQueue = async (sessionId: string): Promise<QueueEn
     if (userId) {
       query = query.or(`user_id.eq.${userId},session_id.eq.${currentSessionId}`);
       // Claim unassociated session entries for this user in background
-      client.from('queue_entries').update({ user_id: userId }).eq('session_id', currentSessionId).is('user_id', null).then(() => {});
+      client.from('queue_entries').update({ user_id: userId }).eq('session_id', currentSessionId).is('user_id', null).then(() => { });
     } else {
       query = query.eq('session_id', currentSessionId);
     }
@@ -820,7 +820,44 @@ export const createOrder = async (params: {
   // Ensure customer has an active queue entry for this business
   let finalQueueEntryId = params.queueEntryId || null;
 
+  // Compute deterministic sequential order number (No fake/random numbers)
+  let nextSeq = 1001;
+  const localOrders = getStored<Order[]>(STORAGE_KEYS.ORDERS, []);
+  const bizLocalOrders = localOrders.filter(o => o.business_id === params.businessId);
+  const localNums = bizLocalOrders
+    .map(o => {
+      const m = o.order_number?.match(/^ORD-(\d+)$/i);
+      return m ? parseInt(m[1], 10) : 0;
+    })
+    .filter(n => n > 0);
+  if (localNums.length > 0) {
+    nextSeq = Math.max(...localNums) + 1;
+  }
+
   if (isSupabaseConfigured() && client) {
+    try {
+      const { data: dbOrders } = await client
+        .from('orders')
+        .select('order_number')
+        .eq('business_id', params.businessId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (dbOrders && dbOrders.length > 0) {
+        const dbNums = dbOrders
+          .map(o => {
+            const m = o.order_number?.match(/^ORD-(\d+)$/i);
+            return m ? parseInt(m[1], 10) : 0;
+          })
+          .filter(n => n > 0);
+        if (dbNums.length > 0) {
+          nextSeq = Math.max(nextSeq, Math.max(...dbNums) + 1);
+        }
+      }
+    } catch (e) {
+      console.warn('Sequential order number check note:', e);
+    }
+
     if (!finalQueueEntryId) {
       const activeQueue = await getCustomerActiveQueue(sessionId);
       if (activeQueue && activeQueue.business_id === params.businessId && ['waiting', 'called', 'serving'].includes(activeQueue.status)) {
@@ -916,7 +953,7 @@ export const createOrder = async (params: {
   }
 
   const totalAmount = params.items.reduce((sum, item) => sum + item.menuItem.price * item.quantity, 0);
-  const orderNumber = 'ORD-' + Math.floor(100 + Math.random() * 900);
+  const orderNumber = `ORD-${nextSeq}`;
   const orderId = crypto.randomUUID();
   const orderItems = params.items.map(it => ({
     id: crypto.randomUUID(),
@@ -949,6 +986,7 @@ export const createOrder = async (params: {
   broadcastChange('orders_updated', newOrder);
   broadcastChange('queue_updated', { businessId: params.businessId });
   return newOrder;
+  return newOrder;
 };
 
 export const getOrdersByBusiness = async (businessId: string): Promise<Order[]> => {
@@ -979,7 +1017,7 @@ export const getCustomerOrders = async (sessionId?: string): Promise<Order[]> =>
     if (userId) {
       query = query.or(`user_id.eq.${userId},session_id.eq.${currentSessionId}`);
       // Claim unassociated session orders for this user in background
-      client.from('orders').update({ user_id: userId }).eq('session_id', currentSessionId).is('user_id', null).then(() => {});
+      client.from('orders').update({ user_id: userId }).eq('session_id', currentSessionId).is('user_id', null).then(() => { });
     } else {
       query = query.eq('session_id', currentSessionId);
     }
@@ -1000,8 +1038,8 @@ export const getCustomerOrders = async (sessionId?: string): Promise<Order[]> =>
 
 export const getCustomerActiveOrders = async (sessionId?: string): Promise<Order[]> => {
   const orders = await getCustomerOrders(sessionId);
-  return orders.filter(o => 
-    ['pending', 'accepted', 'preparing', 'ready'].includes(o.status) || 
+  return orders.filter(o =>
+    ['pending', 'accepted', 'preparing', 'ready'].includes(o.status) ||
     (o.status === 'completed' && (Date.now() - new Date(o.created_at).getTime() < 4 * 3600 * 1000))
   );
 };
@@ -1019,12 +1057,24 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('orders')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', orderId)
         .select()
         .single();
+
+      // Graceful fallback if database has legacy check constraint without 'accepted'
+      if (error && error.message?.includes('orders_status_check') && status === 'accepted') {
+        const fallbackRes = await supabase
+          .from('orders')
+          .update({ status: 'preparing', updated_at: new Date().toISOString() })
+          .eq('id', orderId)
+          .select()
+          .single();
+        data = fallbackRes.data;
+        error = fallbackRes.error;
+      }
 
       if (error) {
         console.error('Supabase update order status error:', error);
@@ -1041,7 +1091,9 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
   // Also synchronize any associated queue entry token if present
   if (queueEntryId) {
     let queueStatus: QueueStatus | null = null;
-    if (status === 'preparing') queueStatus = 'serving';
+    if (status === 'accepted') queueStatus = 'called';
+    else if (status === 'preparing') queueStatus = 'serving';
+    else if (status === 'ready') queueStatus = 'serving';
     else if (status === 'completed') queueStatus = 'completed';
     else if (status === 'cancelled') queueStatus = 'cancelled';
 
@@ -1052,24 +1104,50 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
 
   broadcastChange('orders_updated', { orderId, status });
   broadcastChange('queue_updated', { orderId, status });
-  return order || null;
+  return order ? { ...order, status } : null;
 };
 
 export const clearOrdersByBusiness = async (businessId: string): Promise<boolean> => {
-  // Clear local storage orders for this business
+  // Clear local storage orders for this business immediately
   const allOrders = getStored<Order[]>(STORAGE_KEYS.ORDERS, []);
   const remaining = allOrders.filter(o => o.business_id !== businessId);
   setStored(STORAGE_KEYS.ORDERS, remaining);
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      const { error } = await supabase
+      // 1. Try atomic database procedure first if available
+      const { data: rpcData, error: rpcError } = await supabase.rpc('rpc_clear_business_orders', {
+        p_business_id: businessId,
+      });
+
+      if (!rpcError && rpcData?.success) {
+        broadcastChange('orders_updated', { businessId, cleared: true });
+        return true;
+      }
+
+      // 2. Direct cascade delete in Supabase
+      const { data: bizOrders } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('business_id', businessId);
+
+      if (bizOrders && bizOrders.length > 0) {
+        const orderIds = bizOrders.map(o => o.id);
+        await supabase.from('order_items').delete().in('order_id', orderIds);
+      }
+
+      const { error: delError } = await supabase
         .from('orders')
         .delete()
         .eq('business_id', businessId);
 
-      if (error) {
-        console.error('Supabase clear orders error:', error);
+      if (delError) {
+        console.error('Supabase clear orders error:', delError);
+        // Fallback update to cancelled if DELETE RLS policy was not yet run in console
+        await supabase
+          .from('orders')
+          .update({ status: 'cancelled' })
+          .eq('business_id', businessId);
       }
     } catch (err) {
       console.error('Error clearing orders from Supabase:', err);
@@ -1087,7 +1165,24 @@ export const deleteOrder = async (orderId: string): Promise<boolean> => {
 
   if (isSupabaseConfigured() && supabase) {
     try {
-      await supabase.from('orders').delete().eq('id', orderId);
+      // 1. Try atomic delete procedure first if available
+      const { data: rpcData, error: rpcError } = await supabase.rpc('rpc_delete_order', {
+        p_order_id: orderId,
+      });
+
+      if (!rpcError && rpcData?.success) {
+        broadcastChange('orders_updated', { orderId, deleted: true });
+        return true;
+      }
+
+      // 2. Direct cascade delete in Supabase
+      await supabase.from('order_items').delete().eq('order_id', orderId);
+      const { error } = await supabase.from('orders').delete().eq('id', orderId);
+
+      if (error) {
+        console.error('Error deleting order from Supabase:', error);
+        await supabase.from('orders').update({ status: 'cancelled' }).eq('id', orderId);
+      }
     } catch (err) {
       console.error('Error deleting order from Supabase:', err);
     }

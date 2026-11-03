@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     order_number TEXT NOT NULL,
     customer_name TEXT NOT NULL,
     total_amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'preparing', 'ready', 'completed', 'cancelled')),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'preparing', 'ready', 'completed', 'cancelled')),
     payment_status TEXT NOT NULL DEFAULT 'pay_at_business' CHECK (payment_status IN ('pay_at_business', 'paid')),
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -427,6 +427,14 @@ CREATE POLICY "Owners can update their business orders"
     EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = orders.business_id AND b.owner_id = auth.uid())
   );
 
+CREATE POLICY "Owners can delete their business orders" 
+  ON public.orders FOR DELETE 
+  TO authenticated 
+  USING (
+    public.is_admin() OR
+    EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = orders.business_id AND b.owner_id = auth.uid())
+  );
+
 CREATE POLICY "Users can view order items for their permitted orders" 
   ON public.order_items FOR SELECT 
   TO authenticated 
@@ -438,6 +446,18 @@ CREATE POLICY "Users can view order items for their permitted orders"
         o.user_id = auth.uid() OR
         EXISTS (SELECT 1 FROM public.businesses b WHERE b.id = o.business_id AND b.owner_id = auth.uid())
       )
+    )
+  );
+
+CREATE POLICY "Owners can delete their business order items" 
+  ON public.order_items FOR DELETE 
+  TO authenticated 
+  USING (
+    public.is_admin() OR
+    EXISTS (
+      SELECT 1 FROM public.orders o 
+      JOIN public.businesses b ON b.id = o.business_id 
+      WHERE o.id = order_items.order_id AND b.owner_id = auth.uid()
     )
   );
 
@@ -729,7 +749,17 @@ BEGIN
         END IF;
     END IF;
 
-    SELECT FLOOR(1000 + RANDOM() * 9000)::INTEGER INTO v_order_seq;
+    -- Deterministic sequential order number per business based on actual Supabase database records
+    SELECT COALESCE(MAX(
+        CASE 
+            WHEN order_number ~ '^ORD-[0-9]+$' THEN SUBSTRING(order_number FROM 5)::INTEGER 
+            ELSE 1000 
+        END
+    ), 1000) + 1 
+    INTO v_order_seq
+    FROM public.orders
+    WHERE business_id = p_business_id;
+
     v_order_number := 'ORD-' || v_order_seq::TEXT;
     v_order_id := gen_random_uuid();
 
@@ -962,6 +992,79 @@ BEGIN
 END;
 $$;
 
+-- FUNCTION: Authorized Owner Clear All Business Orders
+CREATE OR REPLACE FUNCTION public.rpc_clear_business_orders(p_business_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_caller_uid UUID;
+    v_is_authorized BOOLEAN;
+    v_count INTEGER;
+BEGIN
+    v_caller_uid := auth.uid();
+    IF v_caller_uid IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'message', 'Authentication required.');
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM public.businesses 
+        WHERE id = p_business_id AND (owner_id = v_caller_uid OR public.is_admin())
+    ) INTO v_is_authorized;
+
+    IF NOT v_is_authorized THEN
+        RETURN jsonb_build_object('success', false, 'message', 'Unauthorized. Only the business owner can clear orders.');
+    END IF;
+
+    DELETE FROM public.order_items 
+    WHERE order_id IN (SELECT id FROM public.orders WHERE business_id = p_business_id);
+
+    WITH deleted AS (
+        DELETE FROM public.orders 
+        WHERE business_id = p_business_id
+        RETURNING *
+    )
+    SELECT count(*) INTO v_count FROM deleted;
+
+    RETURN jsonb_build_object('success', true, 'deleted_count', v_count);
+END;
+$$;
+
+-- FUNCTION: Authorized Owner Delete Single Order
+CREATE OR REPLACE FUNCTION public.rpc_delete_order(p_order_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_caller_uid UUID;
+    v_is_authorized BOOLEAN;
+BEGIN
+    v_caller_uid := auth.uid();
+    IF v_caller_uid IS NULL THEN
+        RETURN jsonb_build_object('success', false, 'message', 'Authentication required.');
+    END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM public.orders o
+        JOIN public.businesses b ON b.id = o.business_id
+        WHERE o.id = p_order_id AND (b.owner_id = v_caller_uid OR public.is_admin())
+    ) INTO v_is_authorized;
+
+    IF NOT v_is_authorized THEN
+        RETURN jsonb_build_object('success', false, 'message', 'Unauthorized. Only the business owner can delete this order.');
+    END IF;
+
+    DELETE FROM public.order_items WHERE order_id = p_order_id;
+    DELETE FROM public.orders WHERE id = p_order_id;
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
 -- ----------------------------------------------------------------------------
 -- 6. STRICT PERMISSION ASSIGNMENTS (REVOKE PUBLIC & GRANT EXPLICIT)
 -- ----------------------------------------------------------------------------
@@ -974,6 +1077,8 @@ REVOKE ALL ON FUNCTION public.rpc_create_order(UUID, TEXT, TEXT, UUID, TEXT, JSO
 REVOKE ALL ON FUNCTION public.rpc_get_public_queue_status(UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.rpc_register_business(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.rpc_admin_delete_business(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.rpc_clear_business_orders(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.rpc_delete_order(UUID) FROM PUBLIC;
 
 -- Explicitly grant only to authorized roles
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
@@ -984,10 +1089,14 @@ GRANT EXECUTE ON FUNCTION public.rpc_create_order(UUID, TEXT, TEXT, UUID, TEXT, 
 GRANT EXECUTE ON FUNCTION public.rpc_get_public_queue_status(UUID) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION public.rpc_register_business(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.rpc_admin_delete_business(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_clear_business_orders(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.rpc_delete_order(UUID) TO authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 7. REALTIME PUBLICATIONS
 -- ----------------------------------------------------------------------------
+ALTER TABLE public.orders REPLICA IDENTITY FULL;
+ALTER TABLE public.queue_entries REPLICA IDENTITY FULL;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.queue_entries; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.orders; EXCEPTION WHEN OTHERS THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.businesses; EXCEPTION WHEN OTHERS THEN NULL; END $$;

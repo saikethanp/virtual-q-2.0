@@ -247,10 +247,14 @@ export const MyQueuePage: React.FC<MyQueuePageProps> = ({ navigate }) => {
                       <span className="text-[#766B63]">
                         {order.status === 'preparing' 
                           ? '🔥 The kitchen is preparing your fresh meal.' 
+                          : order.status === 'accepted'
+                          ? '👍 Your order has been accepted by the business.'
                           : order.status === 'ready' 
                           ? '🔔 Your order is ready! Please collect it at the counter.' 
                           : order.status === 'completed'
                           ? '✨ Enjoy your meal! Thank you for ordering.'
+                          : order.status === 'cancelled'
+                          ? '❌ This order was cancelled.'
                           : '⏳ Your order has been placed and is waiting for kitchen confirmation.'}
                       </span>
                       <div className="text-right">
